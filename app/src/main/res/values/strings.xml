@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">UB</string>
+    <string name="search">Search</string>
+    <string name="default_text">Kitten</string>
+    <string-array name="dsfsd">
+
+    </string-array>
+</resources>
