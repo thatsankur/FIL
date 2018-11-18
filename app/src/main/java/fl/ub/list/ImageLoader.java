@@ -41,7 +41,9 @@ public class ImageLoader {
                     final ImageView imageView = imageViewWeakReference.get();
                     if (imageView != null) {
                         bmp = getBitmapFromUrl(photoUrl, imageView.getHeight(), imageView.getWidth());
-                        cache.put(photoUrl, bmp);
+                        if(bmp!=null) {
+                            cache.put(photoUrl, bmp);
+                        }
                     }
                 }
                 if (bmp != null) {

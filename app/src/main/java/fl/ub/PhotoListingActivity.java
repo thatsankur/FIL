@@ -10,9 +10,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
 
 import org.json.JSONException;
 
@@ -24,7 +24,7 @@ import fl.ub.adapter.PhotoItemAdapter;
 import fl.ub.model.FlickerAPIResponse;
 import fl.ub.parser.ParsingUtil;
 
-public class PhotoListingActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<FlickerAPIResponse>{
+public class PhotoListingActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<FlickerAPIResponse> {
     private static final String QUERY_URL_EXTRA = "url";
     private static final int OPERATION_URL_LOADER = 1;
     private int CURRENT_PAGE_INDEX = 0;
@@ -34,68 +34,72 @@ public class PhotoListingActivity extends AppCompatActivity implements LoaderMan
     private PhotoItemAdapter photoItemAdapter;
     private boolean isLoading;
     private Group group;
+    private TextView message;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_photo_listing);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-
+        message = findViewById(R.id.message);
         queryParam = getIntent().getStringExtra(MainActivity.QUERY_PARAM);
-group = findViewById(R.id.group);
+        group = findViewById(R.id.group);
         findAndInitRecyclerView();
-        loadList();
+        loadListAndIncrPage();
 
     }
 
-    private void loadList() {
-        // Create a bundle called queryBundle
-        if(!isLoading) {
-            if(MAX_PAGE_REQ == 0 || CURRENT_PAGE_INDEX <= MAX_PAGE_REQ) {
-                isLoading = true;
-                group.setVisibility(View.VISIBLE);
-                Bundle queryBundle = new Bundle();
-                int index = CURRENT_PAGE_INDEX++;
-                String url = null;
-                try {
-                    url = "https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=3e7cc266ae2b0e0d78e279ce8e361736&%20format=json&nojsoncallback=1&safe_search=1&text=" + URLEncoder.encode(queryParam, "UTF-8") + "&page=" + index;
-                } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
-                }
-                Log.d("Ankur", "Loading page " + index + " url " + url);
-                queryBundle.putString(QUERY_URL_EXTRA, url);
-                // Call getSupportLoaderManager and store it in a LoaderManager variable
-                LoaderManager loaderManager = getSupportLoaderManager();
-                // Get our Loader by calling getLoader and passing the ID we specified
-                Loader<FlickerAPIResponse> loader = loaderManager.getLoader(OPERATION_URL_LOADER);
-                // If the Loader was null, initialize it. Else, restart it.
-                if (loader == null) {
-                    loaderManager.initLoader(OPERATION_URL_LOADER, queryBundle, this);
-                } else {
-                    loaderManager.restartLoader(OPERATION_URL_LOADER, queryBundle, this);
-                }
+    private void loadListAndIncrPage() {
+        if (!isLoading) {
+            if (MAX_PAGE_REQ == 0 || CURRENT_PAGE_INDEX <= MAX_PAGE_REQ) {
+                int index = ++CURRENT_PAGE_INDEX;
+                loadList(index);
             }
+        }
+    }
+
+    private void loadList(int index) {
+        isLoading = true;
+        group.setVisibility(View.VISIBLE);
+        Bundle queryBundle = new Bundle();
+        String url = null;
+        try {
+            url = "https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=3e7cc266ae2b0e0d78e279ce8e361736&%20format=json&nojsoncallback=1&safe_search=1&text=" + URLEncoder.encode(queryParam, "UTF-8") + "&page=" + index;
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        Log.d("Ankur", "Loading page " + index + " url " + url);
+        queryBundle.putString(QUERY_URL_EXTRA, url);
+        // Call getSupportLoaderManager and store it in a LoaderManager variable
+        LoaderManager loaderManager = getSupportLoaderManager();
+        // Get our Loader by calling getLoader and passing the ID we specified
+        Loader<FlickerAPIResponse> loader = loaderManager.getLoader(OPERATION_URL_LOADER);
+        // If the Loader was null, initialize it. Else, restart it.
+        if (loader == null) {
+            loaderManager.initLoader(OPERATION_URL_LOADER, queryBundle, this);
+        } else {
+            loaderManager.restartLoader(OPERATION_URL_LOADER, queryBundle, this);
         }
     }
 
     private void findAndInitRecyclerView() {
         recyclerView = findViewById(R.id.list);
         photoItemAdapter = new PhotoItemAdapter();
-        RecyclerView.LayoutManager layoutManager = new GridLayoutManager(this,3);
+        RecyclerView.LayoutManager layoutManager = new GridLayoutManager(this, 3);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setHasFixedSize(true);
         recyclerView.setAdapter(photoItemAdapter);
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                GridLayoutManager layoutManager=GridLayoutManager.class.cast(recyclerView.getLayoutManager());
+                GridLayoutManager layoutManager = GridLayoutManager.class.cast(recyclerView.getLayoutManager());
                 int totalItemCount = layoutManager.getItemCount();
                 int lastVisible = layoutManager.findLastVisibleItemPosition();
 
                 boolean endHasBeenReached = lastVisible + 5 >= totalItemCount;
                 if (totalItemCount > 0 && endHasBeenReached) {
                     //you have reached to the bottom of your recycler view
-                    loadList();
+                    loadListAndIncrPage();
                 }
             }
         });
@@ -118,9 +122,10 @@ group = findViewById(R.id.group);
                 }
                 return null;
             }
+
             @Override
             protected void onStartLoading() {
-                    forceLoad();
+                forceLoad();
             }
 
             @Override
@@ -132,9 +137,28 @@ group = findViewById(R.id.group);
 
     @Override
     public void onLoadFinished(@NonNull Loader<FlickerAPIResponse> loader, FlickerAPIResponse response) {
-        if(response!=null){
+        if (response != null) {
             MAX_PAGE_REQ = response.getPhotos().getPages();
-            photoItemAdapter.setItem(0,response.getPhotos().getPhoto());
+            photoItemAdapter.setItem(0, response.getPhotos().getPhoto());
+            if (CURRENT_PAGE_INDEX == 1) {
+                if (response.getPhotos().getPhoto().size() == 0) {
+                    message.setVisibility(View.VISIBLE);
+                    message.setText("There is noting to show for this search");
+                }
+            }
+        } else {
+            if (CURRENT_PAGE_INDEX == 1) {
+                message.setVisibility(View.VISIBLE);
+                message.setText("Some thing went wrong click to retry...");
+                message.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        message.setVisibility(View.GONE);
+                        loadList(1);
+                        message.setOnClickListener(null);
+                    }
+                });
+            }
         }
         isLoading = false;
         group.setVisibility(View.GONE);
@@ -146,7 +170,7 @@ group = findViewById(R.id.group);
     }
 
     @Override
-    public boolean onNavigateUp(){
+    public boolean onNavigateUp() {
         finish();
         return true;
     }
